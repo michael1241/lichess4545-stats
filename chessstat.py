@@ -6,10 +6,13 @@ import requests
 import lxml.html
 import time
 import json
+import sys
 
-league = raw_input("Please enter 'team4545' or 'lonewolf'")
-season = raw_input("Please enter season number as a digit:")
-roundnum = raw_input("Please enter round number as a digit:")
+league = str(sys.argv[1]) # team4545 or lonewolf
+season = str(sys.argv[2])
+roundnum = str(sys.argv[3])
+exclude = list(sys.argv[4:]) # game IDs to exclude from results
+
 gamesfilename = "{0}GamesS{1}R{2}".format(league, season, roundnum) 
 #gamesfilename = 'lonewolfSeasonS6'
 lichessurl = "https://en.lichess.org/"
@@ -58,6 +61,14 @@ except Exception,e:
     json.dump(games, outfile, indent=4)
     print "This data was fetched from web."
     outfile.close()
+
+#exclude listed games from stats results e.g. for cheater games
+for ID in exclude:
+    try:
+        del games[ID]
+        print "{0} excluded".format(ID)
+    except KeyError:
+        print "Please enter a valid ID in place of {0}".format(ID)
 gamevalues = games.values()
 
 #get stats for ACPL high low both individual and combined
