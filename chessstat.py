@@ -8,12 +8,12 @@ import time
 import json
 import sys
 
-league = str(sys.argv[1]) # team4545 or lonewolf
-season = str(sys.argv[2])
-roundnum = str(sys.argv[3])
+league = sys.argv[1] # team4545 or lonewolf
+season = sys.argv[2]
+roundnums = eval(sys.argv[3]) # tuple of round number(s) e.g (1,2) is round 1 and (1,9) is rounds 1 to 8
 exclude = list(sys.argv[4:]) # game IDs to exclude from results
 
-gamesfilename = "{0}GamesS{1}R{2}".format(league, season, roundnum) 
+gamesfilename = "{0}GamesS{1}R{2}".format(league, season, roundnums) 
 #gamesfilename = 'lonewolfSeasonS6'
 lichessurl = "https://en.lichess.org/"
 
@@ -23,12 +23,14 @@ elif league == "lonewolf":
     xpathclass = "text-center text-nowrap"
 
 def gameList():
-    #build list of games from the round
-    connection = urllib.urlopen('https://www.lichess4545.com/{0}/season/{1}/round/{2}/pairings/'.format(league, season, roundnum))
-    dom =  lxml.html.fromstring(connection.read())
+    #build list of games from the round(s)
     gameIDs = []
-    for link in dom.xpath('//td[@class="{0}"]/a/@href'.format(xpathclass)):
-        gameIDs.append(link[-8:])
+    print "Getting games for rounds {0} to {1}".format(roundnums[0],roundnums[1])
+    for roundnum in xrange(roundnums[0], roundnums[1]):
+        connection = urllib.urlopen('https://www.lichess4545.com/{0}/season/{1}/round/{2}/pairings/'.format(league, season, roundnum))
+        dom =  lxml.html.fromstring(connection.read())
+        for link in dom.xpath('//td[@class="{0}"]/a/@href'.format(xpathclass)):
+            gameIDs.append(link[-8:])
     return gameIDs
 
 def getGames(gameIDs):
@@ -114,19 +116,14 @@ def getACPL(games):
             combminigame.append(game.get('id'))
     return maxi, wbmaxigame, mini, wbminigame, combmaxi, combmaxigame, combmini, combminigame
 
-#get longest (and shortest) games
+#get longest games
 def getTurns(games):
     maxturnIDs = []
     maxturns =  max([(game['turns']) for game in gamevalues])
     for game in gamevalues:
         if game['turns'] == maxturns:
             maxturnIDs.append(game['id'])
-    return maxturns, maxturnIDs#, minturns, minturnIDs
-"""    minturnIDs = []
-    minturns =  min([(game['turns']) for game in gamevalues])
-    for game in gamevalues:
-        if game['turns'] == minturns:
-            minturnIDs.append(game['id'])"""
+    return maxturns, maxturnIDs
 
 #get biggest match upset by rating difference
 def getUpset(games):
@@ -246,3 +243,97 @@ print "{0} was the highest ACPL in game ID {1}. {2} was the lowest ACPL in game 
 print "The longest think was {0} in game {1} on move {2}".format(maxi_think, ", ".join(maxi_thinkIDs), maxi_move)
 print "The most time left was {0} in game {1}".format(maxi_remain, ", ".join(maxi_remainIDs))
 print "The most time spent was {0} in game {1}".format(maxi_spent, ", ".join(maxi_spentIDs))
+
+def seasonStats(gamevalues):
+    for game in gamevalues:
+        try:
+            test = game['players']['white']['analysis']['acpl']
+        except KeyError:
+            print "no analysis for {0}".format(game['id'])
+
+    removal = list(filter(lambda game: game['turns'] < 4 or game['status'] == 'started', gamevalues))
+    print removal
+    for game in removal:
+        gamevalues.remove(game)
+
+    playergames = {}
+    #dictionary of playername : [(game, colour), ...]
+    for game in gamevalues:
+        w = game['players']['white']['userId']
+        b = game['players']['black']['userId']
+        if w not in playergames:
+            playergames[w] = [(game,'white')]
+        else:
+            playergames[w].append((game,'white'))
+        if b not in playergames:
+            playergames[b] = [(game,'black')]
+        else:
+            playergames[b].append((game,'black'))
+
+    ################################################################
+
+    #dictionary of playername : [ACPLs]
+    playerACPLs = {}
+    for player in playergames:
+        playerACPLs[player] = []
+        for gamedetails in playergames[player]:
+            ACPL = gamedetails[0]['players'][gamedetails[1]]['analysis']['acpl']
+            playerACPLs[player].append(ACPL)
+
+    averageACPL = []
+    for player in playerACPLs:
+        average = sum(playerACPLs[player])/len(playerACPLs[player])
+        if len(playerACPLs[player]) < 4:
+            average = '< 4 games'
+        averageACPL.append((player, average))
+    averageACPL.sort(key=lambda x: x[1])
+    print "acpl", averageACPL
+
+    #################################################################
+
+    playerGameLen = {}
+    for player in playergames:
+        playerGameLen[player] = []
+        for gamedetails in playergames[player]:
+            GameLen = gamedetails[0]['turns']
+            playerGameLen[player].append(GameLen)
+    #print playerGameLen
+
+    averageLen = []
+    for player in playerGameLen:
+        average = sum(playerGameLen[player])/len(playerGameLen[player])
+        if len(playerGameLen[player]) < 4:
+                average = '< 4 games'
+        averageLen.append((player, average))
+    averageLen.sort(key=lambda x: x[1])
+    print "average length", averageLen
+
+    #################################################################
+    playerDraws = []
+    for player in playergames:
+        draws = 0
+        for gamedetails in playergames[player]:
+            if gamedetails[0]['status'] == 'draw':
+                draws += 1
+        playerDraws.append((player,draws))
+    playerDraws.sort(key=lambda x:x[1])
+    print "draws", playerDraws
+    #################################################################
+    sandbag = []
+    for player in playergames:
+        #order player's rating chronologically by 'createdAt'
+        games = []
+        for gamedetails in playergames[player]:
+            rating = gamedetails[0]['players'][gamedetails[1]]['rating']
+            time = gamedetails[0]['createdAt']
+            games.append((time, rating))
+        games.sort()
+        diff = games[-1][1] - games[0][1]
+        sandbag.append((player, diff))
+    sandbag.sort(key=lambda x: x[1])
+    sandbag.reverse()
+    print "sandbag", sandbag
+    ################################################################
+
+if roundnums[1] - roundnums[0] > 1:
+    seasonStats(gamevalues)
