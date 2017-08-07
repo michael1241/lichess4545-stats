@@ -11,7 +11,7 @@ import sys
 league = sys.argv[1] # team4545 or lonewolf
 season = sys.argv[2]
 roundnums = eval(sys.argv[3]) # tuple of round number(s) e.g (1,2) is round 1 and (1,9) is rounds 1 to 8
-exclude = list(sys.argv[4:]) # game IDs to exclude from results
+exclude = sys.argv[4:] # game IDs to exclude from results
 
 gamesfilename = "{0}GamesS{1}R{2}".format(league, season, roundnums) 
 #gamesfilename = 'lonewolfSeasonS6'
@@ -37,7 +37,7 @@ def getGames(gameIDs):
     #get games listed in gameIDs
     games = {}
     for num,gameid in enumerate(gameIDs):
-        response = requests.get("https://en.lichess.org/api/game/{0}?with_analysis=1&with_movetimes=1".format(gameid))
+        response = requests.get("https://en.lichess.org/api/game/{0}?with_analysis=1&with_movetimes=1&with_opening=1".format(gameid))
         games[gameid] = json.loads(response.text)
         time.sleep(1)
         print "got game", num
@@ -213,7 +213,7 @@ def timeStats(games):
             if spent > maxi_spent:
                 maxi_spent = spent
                 maxi_spentIDs = [game.get('id')]
-            elif time == maxi_think:
+            elif spent == maxi_spent:
                 maxi_spentIDs.append(game.get('id'))
     maxi_spent = convert(maxi_spent)
     maxi_remain = convert(maxi_remain) 
@@ -334,6 +334,19 @@ def seasonStats(gamevalues):
     sandbag.reverse()
     print "sandbag", sandbag
     ################################################################
+    openings = {}
+    for game in gamevalues:
+        try:
+            a = game["opening"]["eco"]
+        except KeyError:
+            a = "unknown or from position"
+        if a not in openings:
+            openings[a] = 1
+        else:
+            openings[a] += 1
+    opening_list = [[k,v] for k,v in openings.items()]
+    opening_list.sort()
+    print opening_list
 
 if roundnums[1] - roundnums[0] > 1:
     seasonStats(gamevalues)
