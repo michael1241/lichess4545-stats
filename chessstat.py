@@ -37,7 +37,7 @@ def getGames(gameIDs):
     #get games listed in gameIDs
     games = {}
     for num,gameid in enumerate(gameIDs):
-        response = requests.get("https://en.lichess.org/api/game/{0}?with_analysis=1&with_movetimes=1&with_opening=1".format(gameid))
+        response = requests.get("https://en.lichess.org/api/game/{0}?with_analysis=1&with_movetimes=1&with_opening=1&with_moves=1".format(gameid))
         games[gameid] = json.loads(response.text)
         time.sleep(1)
         print "got game", num
