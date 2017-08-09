@@ -313,7 +313,7 @@ def seasonStats(gamevalues):
     for player in playergames:
         draws = 0
         for gamedetails in playergames[player]:
-            if gamedetails[0]['status'] == 'draw':
+            if gamedetails[0]['status'] in ['draw', 'stalemate']:
                 draws += 1
         playerDraws.append((player,draws))
     playerDraws.sort(key=lambda x:x[1])
