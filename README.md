@@ -6,3 +6,11 @@ The following arguments must be included when running this program:
 
 Optional argument(s):
 [IDs of any games to be excluded, separated by spaces e.g. jnda8s24 93sjag3h]
+
+
+extractpgns.py is a tool to take the output of chessstat.py and provide all games in PGN format. To run, use the following syntax including quote marks:
+./extractpgns.py "outputfilename"
+
+for example: ./extractpgns.py "team4545GamesS8R(8, 9)"
+will create a new file in the same directory called team4545GamesS8R(8, 9)pgns.pgn
+
