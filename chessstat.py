@@ -14,16 +14,16 @@ roundnums = eval(sys.argv[3]) # tuple of round number(s) e.g (1,2) is round 1 an
 exclude = sys.argv[4:] # game IDs to exclude from results
 
 gamesfilename = "{0}GamesS{1}R{2}".format(league, season, roundnums) 
-#gamesfilename = 'lonewolfSeasonS6'
 lichessurl = "https://en.lichess.org/"
 
+# setting the correct xpath to get game links from team4545 or lonewolf areas of lichess4545.com website
 if league == "team4545":
     xpathclass = "cell-game-result"
 elif league == "lonewolf":
     xpathclass = "text-center text-nowrap"
 
 def gameList():
-    #build list of games from the round(s)
+    # build list of gameIDs from the round(s) by scraping lichess4545.com website
     gameIDs = []
     print "Getting games for rounds {0} to {1}".format(roundnums[0],roundnums[1])
     for roundnum in xrange(roundnums[0], roundnums[1]):
@@ -34,16 +34,16 @@ def gameList():
     return gameIDs
 
 def getGames(gameIDs):
-    #get games listed in gameIDs
+    # get game data from games listed in gameIDs using lichess.org API
     games = {}
     for num,gameid in enumerate(gameIDs):
         response = requests.get("https://en.lichess.org/api/game/{0}?with_analysis=1&with_movetimes=1&with_opening=1&with_moves=1".format(gameid))
         games[gameid] = json.loads(response.text)
-        time.sleep(1)
+        time.sleep(1) # wait to prevent server overload
         print "got game", num
     return games
 
-#get games in dictionary format - from file if present or lichess.org if not
+# get games in dictionary format - from file if present in working directory or lichess.org if not
 gameIDs = gameList()
 try:
     infile = open(gamesfilename,'r')
@@ -64,7 +64,7 @@ except Exception,e:
     print "This data was fetched from web."
     outfile.close()
 
-#exclude listed games from stats results e.g. for cheater games
+# exclude listed games from stats results e.g. for cheater games
 for ID in exclude:
     try:
         del games[ID]
@@ -73,7 +73,7 @@ for ID in exclude:
         print "Please enter a valid ID in place of {0}".format(ID)
 gamevalues = games.values()
 
-#get stats for ACPL high low both individual and combined
+# get stats for ACPL high low both individual and combined
 def getACPL(games):
     maxi = 0
     mini = 1000
@@ -116,7 +116,7 @@ def getACPL(games):
             combminigame.append(game.get('id'))
     return maxi, wbmaxigame, mini, wbminigame, combmaxi, combmaxigame, combmini, combminigame
 
-#get longest games
+# get longest games
 def getTurns(games):
     maxturnIDs = []
     maxturns =  max([(game['turns']) for game in gamevalues])
@@ -125,7 +125,7 @@ def getTurns(games):
             maxturnIDs.append(game['id'])
     return maxturns, maxturnIDs
 
-#get biggest match upset by rating difference
+# get biggest match upset by rating difference
 def getUpset(games):
     maxiupset = 0
     upset = 0
@@ -143,7 +143,7 @@ def getUpset(games):
             upsetIDs.append(game['id'])
     return upset, upsetIDs
 
-#get shortest mate
+# get shortest mate/resign/draw
 def getQuickGame(games, finish):
     try:
         minfinIDs = []
@@ -155,6 +155,7 @@ def getQuickGame(games, finish):
     except ValueError:
         return "not", ["N/A"]
 
+# convert lichess 1/100ths of a second into easily readable format
 def convert(time):
     minutes = time / 6000
     seconds = round(((((time / 6000.0) - minutes))*60),0)
@@ -220,7 +221,7 @@ def timeStats(games):
     maxi_think = convert(maxi_think)
     return maxi_think, maxi_thinkIDs, maxi_move, maxi_remain, maxi_remainIDs, maxi_spent, maxi_spentIDs
 
-#assigning variables for formatting
+# assigning variables for formatting
 upset, upsetIDs = getUpset(games)
 minmate, minmateIDs = getQuickGame(games, "mate")
 mindraw, mindrawIDs = getQuickGame(games, "draw")
@@ -238,7 +239,6 @@ print "The fastest draw was {0} found in game ID {1}.".format(mindraw, ", ".join
 print "The fastest resign was {0} found in game ID {1}.".format(minresign, ", ".join(minresignIDs))
 print "The biggest upset was {0} points in game ID {1}.".format(upset, ", ".join(upsetIDs))
 print "{0} was the longest game with ID {1}.".format(maxturns, ", ".join(maxturnIDs))
-#, {2} was the shortest game with ID {3}. minturns, ", ".join(minturnIDs)
 print "{0} was the highest ACPL in game ID {1}. {2} was the lowest ACPL in game ID {3}. Combined maximum ACPL was {4} in game ID {5} and the combined minimum ACPL was {6} in game ID {7}.".format(maxi, ", ".join(wbmaxigame), mini, ", ".join(wbminigame), combmaxi, ", ".join(combmaxigame), combmini, ", ".join(combminigame))
 print "The longest think was {0} in game {1} on move {2}".format(maxi_think, ", ".join(maxi_thinkIDs), maxi_move)
 print "The most time left was {0} in game {1}".format(maxi_remain, ", ".join(maxi_remainIDs))
