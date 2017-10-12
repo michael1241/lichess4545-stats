@@ -75,6 +75,9 @@ for player in exclude:
         if game["players"]["white"]["userId"] == player or game["players"]["black"]["userId"] == player:
             print "{0} removed".format(game["id"])
             gamevalues.remove(game) 
+        elif game["rated"] == "false":
+            print "{0} removed".format(game["id"])
+            gamevalues.remove(game) 
 
 # get stats for ACPL high low both individual and combined
 def getACPL(games):
