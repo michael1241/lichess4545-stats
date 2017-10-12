@@ -11,7 +11,10 @@ import sys
 league = sys.argv[1] # team4545 or lonewolf
 season = sys.argv[2]
 roundnums = eval(sys.argv[3]) # tuple of round number(s) e.g (1,2) is round 1 and (1,9) is rounds 1 to 8
-exclude = sys.argv[4:] # game IDs to exclude from results
+if len(sys.argv) == 5:
+    exclude = sys.argv[4].split(",") # players to exclude from results in list format playerx,playery,playerz
+else:
+    exclude = []
 
 gamesfilename = "{0}GamesS{1}R{2}".format(league, season, roundnums) 
 lichessurl = "https://en.lichess.org/"
@@ -64,14 +67,14 @@ except Exception,e:
     print "This data was fetched from web."
     outfile.close()
 
-# exclude listed games from stats results e.g. for cheater games
-for ID in exclude:
-    try:
-        del games[ID]
-        print "{0} excluded".format(ID)
-    except KeyError:
-        print "Please enter a valid ID in place of {0}".format(ID)
 gamevalues = games.values()
+
+# exclude listed players' games from stats results e.g. for cheater games
+for player in exclude:
+    for game in gamevalues:
+        if game["players"]["white"]["userId"] == player or game["players"]["black"]["userId"] == player:
+            print "{0} removed".format(game["id"])
+            gamevalues.remove(game) 
 
 # get stats for ACPL high low both individual and combined
 def getACPL(games):
