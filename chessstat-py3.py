@@ -68,18 +68,13 @@ except Exception as e:
     print("This data was fetched from web.")
     outfile.close()
 
-gamevalues = list(games.values())
-
 # exclude listed players' games from stats results e.g. for cheater games
-for player in EXCLUDE:
-    for game in gamevalues:
-        if game["players"]["white"]["userId"] == player or game["players"]["black"]["userId"] == player:
-            print("{0} removed".format(game["id"]))
-            gamevalues.remove(game)
-        elif game["rated"] == "false":
-            print("{0} removed".format(game["id"]))
-            gamevalues.remove(game)
-
+gamevalues = []
+for game in list(games.values()):
+    if game["players"]["white"]["userId"] not in EXCLUDE and game["players"]["black"]["userId"] not in EXCLUDE:
+        gamevalues.append(game)
+    else:
+        print("{0} removed".format(game["id"]))
 
 # get stats for ACPL high low both individual and combined
 def getACPL():
