@@ -9,28 +9,31 @@ import json
 import sys
 from functools import reduce
 
-league = sys.argv[1] # team4545 or lonewolf
-season = sys.argv[2]
-roundnums = eval(sys.argv[3]) # tuple of round number(s) e.g (1,2) is round 1 and (1,9) is rounds 1 to 8
-exclude = sys.argv[4:] # game IDs to exclude from results
+LEAGUE = sys.argv[1] # team4545 or lonewolf
+SEASON = sys.argv[2]
+ROUNDNUMS = eval(sys.argv[3]) # tuple of round number(s) e.g (1,2) is round 1 and (1,9) is rounds 1 to 8
+if len(sys.argv) == 5:
+    EXCLUDE = sys.argv[4].split(",") # players to exclude from results in list format playerx,playery,playerz
+else:
+    EXCLUDE = []
 
-gamesfilename = "{0}GamesS{1}R{2}".format(league, season, roundnums) 
-lichessurl = "https://en.lichess.org/"
+GAMESFILENAME = "{0}GamesS{1}R{2}".format(LEAGUE, SEASON, ROUNDNUMS) 
+LICHESSURL = "https://en.lichess.org/"
 
 # setting the correct xpath to get game links from team4545 or lonewolf areas of lichess4545.com website
-if league == "team4545":
-    xpathclass = "cell-game-result"
-elif league == "lonewolf":
-    xpathclass = "text-center text-nowrap"
+if LEAGUE == "team4545":
+    XPATHCLASS = "cell-game-result"
+elif LEAGUE == "lonewolf":
+    XPATHCLASS = "text-center text-nowrap"
 
 def gameList():
     # build list of gameIDs from the round(s) by scraping lichess4545.com website
     gameIDs = []
-    print("Getting games for rounds {0} to {1}".format(roundnums[0],roundnums[1]))
-    for roundnum in range(roundnums[0], roundnums[1]):
-        connection = urllib.request.urlopen('https://www.lichess4545.com/{0}/season/{1}/round/{2}/pairings/'.format(league, season, roundnum))
+    print("Getting games for rounds {0} to {1}".format(ROUNDNUMS[0],ROUNDNUMS[1]))
+    for roundnum in range(ROUNDNUMS[0], ROUNDNUMS[1]):
+        connection = urllib.request.urlopen('https://www.lichess4545.com/{0}/season/{1}/round/{2}/pairings/'.format(LEAGUE, SEASON, roundnum))
         dom =  lxml.html.fromstring(connection.read())
-        for link in dom.xpath('//td[@class="{0}"]/a/@href'.format(xpathclass)):
+        for link in dom.xpath('//td[@class="{0}"]/a/@href'.format(XPATHCLASS)):
             gameIDs.append(link[-8:])
     return gameIDs
 
@@ -47,35 +50,39 @@ def getGames(gameIDs):
 # get games in dictionary format - from file if present in working directory or lichess.org if not
 gameIDs = gameList()
 try:
-    infile = open(gamesfilename,'r')
+    infile = open(GAMESFILENAME,'r')
     games = json.load(infile)
     infile.close()
     newgames = set(gameIDs) - set(games.keys())
     if newgames:
         games.update(getGames(newgames))
-        outfile = open(gamesfilename, 'w')
+        outfile = open(GAMESFILENAME, 'w')
         json.dump(games, outfile, indent=4)
         print("This data was updated with:", newgames)
     print("This data was read from file.")
 except Exception as e:
     print(e)
     games = getGames(gameIDs)
-    outfile = open(gamesfilename,'w')
+    outfile = open(GAMESFILENAME,'w')
     json.dump(games, outfile, indent=4)
     print("This data was fetched from web.")
     outfile.close()
 
-# exclude listed games from stats results e.g. for cheater games
-for ID in exclude:
-    try:
-        del games[ID]
-        print("{0} excluded".format(ID))
-    except KeyError:
-        print("Please enter a valid ID in place of {0}".format(ID))
 gamevalues = list(games.values())
 
+# exclude listed players' games from stats results e.g. for cheater games
+for player in EXCLUDE:
+    for game in gamevalues:
+        if game["players"]["white"]["userId"] == player or game["players"]["black"]["userId"] == player:
+            print("{0} removed".format(game["id"]))
+            gamevalues.remove(game)
+        elif game["rated"] == "false":
+            print("{0} removed".format(game["id"]))
+            gamevalues.remove(game)
+
+
 # get stats for ACPL high low both individual and combined
-def getACPL(games):
+def getACPL():
     maxi = 0
     mini = 1000
     combmaxi = 0
@@ -89,7 +96,7 @@ def getACPL(games):
             whiteacpl = game.get('players').get('white').get('analysis').get('acpl')
             blackacpl = game.get('players').get('black').get('analysis').get('acpl')
         except AttributeError:
-            print("No analysis for {0}{1}".format(lichessurl, game.get('id')))
+            print("No analysis for {0}{1}".format(LICHESSURL, game.get('id')))
             continue
         combacpl = whiteacpl + blackacpl
         wbmaxi = max(whiteacpl, blackacpl)
@@ -118,7 +125,7 @@ def getACPL(games):
     return maxi, wbmaxigame, mini, wbminigame, combmaxi, combmaxigame, combmini, combminigame
 
 # get longest games
-def getTurns(games):
+def getTurns():
     maxturnIDs = []
     maxturns =  max([(game['turns']) for game in gamevalues])
     for game in gamevalues:
@@ -127,7 +134,7 @@ def getTurns(games):
     return maxturns, maxturnIDs
 
 # get biggest match upset by rating difference
-def getUpset(games):
+def getUpset():
     maxiupset = 0
     upset = 0
     upsetIDs = []
@@ -145,7 +152,7 @@ def getUpset(games):
     return upset, upsetIDs
 
 # get shortest mate/resign/draw
-def getQuickGame(games, finish):
+def getQuickGame(finish):
     try:
         minfinIDs = []
         minfin =  min([(game['turns']) for game in gamevalues if game['status'] == finish])
@@ -162,11 +169,11 @@ def convert(time):
     seconds = round(((((time / 6000.0) - minutes))*60),0)
     return  str(minutes) + " minutes " + str(seconds) + " seconds"
 
-def timeStats(games):
-    if league == "team4545":
+def timeStats():
+    if LEAGUE == "team4545":
         start_time = 45*60*100
         increment = 45*100
-    elif league == "lonewolf":
+    elif LEAGUE == "lonewolf":
         start_time = 30*60*100
         increment = 30*100
 
@@ -184,7 +191,7 @@ def timeStats(games):
             whitetimes = game.get('players').get('white').get('moveCentis')
             blacktimes = game.get('players').get('black').get('moveCentis')
         except AttributeError:
-            print("No movetimes for {0}{1}".format(lichessurl, game.get('id')))
+            print("No movetimes for {0}{1}".format(LICHESSURL, game.get('id')))
             continue
         if len(whitetimes) == len(blacktimes):
             last_move = "black"
@@ -222,18 +229,44 @@ def timeStats(games):
     maxi_think = convert(maxi_think)
     return maxi_think, maxi_thinkIDs, maxi_move, maxi_remain, maxi_remainIDs, maxi_spent, maxi_spentIDs
 
+#eval based stats - in progress
+def getBlunder():
+    blunder = 0
+    blunderIDs = []
+    for game in gamevalues:
+        evals = []
+        for ev in game["analysis"]:
+            if "eval" in ev:
+                evals.append(ev.get("eval"))
+            else:
+                mate = ev.get("mate") * 100 #adjust weighting of mate to eval
+                sign = mate//abs(mate)
+                mate += 6000 * sign
+                evals.append(mate)
+        gameblunders = [abs(x - y) for (x, y) in zip(evals[1:], evals[:-1])]
+        gameblundermove = max(range(len(gameblunders)), key=gameblunders.__getitem__)
+        gameblunder = max(gameblunders)
+        if gameblunder > blunder:
+            blunder = gameblunder
+            blunderIDs = [game.get('id'), gameblundermove]
+        elif gameblunder == blunder:
+            blunderIDs.append(game.get('id'), gameblundermove)
+    return blunder, blunderIDs
+#print(getBlunder())
+
+
 # assigning variables for formatting
-upset, upsetIDs = getUpset(games)
-minmate, minmateIDs = getQuickGame(games, "mate")
-mindraw, mindrawIDs = getQuickGame(games, "draw")
-minresign, minresignIDs = getQuickGame(games, "resign")
-maxturns, maxturnIDs = getTurns(games)
-maxi, wbmaxigame, mini, wbminigame, combmaxi, combmaxigame, combmini, combminigame = getACPL(games)
-maxi_think, maxi_thinkIDs, maxi_move, maxi_remain, maxi_remainIDs, maxi_spent, maxi_spentIDs = timeStats(games)
+upset, upsetIDs = getUpset()
+minmate, minmateIDs = getQuickGame("mate")
+mindraw, mindrawIDs = getQuickGame("draw")
+minresign, minresignIDs = getQuickGame("resign")
+maxturns, maxturnIDs = getTurns()
+maxi, wbmaxigame, mini, wbminigame, combmaxi, combmaxigame, combmini, combminigame = getACPL()
+maxi_think, maxi_thinkIDs, maxi_move, maxi_remain, maxi_remainIDs, maxi_spent, maxi_spentIDs = timeStats()
 
 for stat in [upsetIDs, minmateIDs, mindrawIDs, minresignIDs, maxturnIDs, wbmaxigame, wbminigame, combmaxigame, combminigame, maxi_thinkIDs, maxi_remainIDs, maxi_spentIDs]:
     for n, game in enumerate(stat):
-        stat[n] = lichessurl + game
+        stat[n] = LICHESSURL + game
 
 print("The fastest mate was {0} found in game ID {1}.".format(minmate, ", ".join(minmateIDs)))
 print("The fastest draw was {0} found in game ID {1}.".format(mindraw, ", ".join(mindrawIDs)))
@@ -248,7 +281,7 @@ print("The most time spent was {0} in game {1}".format(maxi_spent, ", ".join(max
 def seasonStats(gamevalues):
     for game in gamevalues:
         try:
-            test = game['players']['white']['analysis']['acpl']
+            _ = game['players']['white']['analysis']['acpl']
         except KeyError:
             print("no analysis for {0}".format(game['id']))
 
@@ -286,6 +319,7 @@ def seasonStats(gamevalues):
         average = sum(playerACPLs[player])/len(playerACPLs[player])
         if len(playerACPLs[player]) < 4:
             average = '< 4 games'
+            continue
         averageACPL.append((player, average))
     averageACPL.sort(key=lambda x: x[1])
     print("acpl", averageACPL)
@@ -304,7 +338,8 @@ def seasonStats(gamevalues):
     for player in playerGameLen:
         average = sum(playerGameLen[player])/len(playerGameLen[player])
         if len(playerGameLen[player]) < 4:
-                average = '< 4 games'
+            average = '< 4 games'
+            continue
         averageLen.append((player, average))
     averageLen.sort(key=lambda x: x[1])
     print("average length", averageLen)
@@ -349,5 +384,5 @@ def seasonStats(gamevalues):
     opening_list.sort()
     print(opening_list)
 
-if roundnums[1] - roundnums[0] > 1:
+if ROUNDNUMS[1] - ROUNDNUMS[0] > 1:
     seasonStats(gamevalues)
