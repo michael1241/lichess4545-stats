@@ -18,7 +18,7 @@ else:
     EXCLUDE = []
 
 GAMESFILENAME = "{0}GamesS{1}R{2}".format(LEAGUE, SEASON, ROUNDNUMS) 
-LICHESSURL = "https://en.lichess.org/"
+LICHESSURL = "https://lichess.org/"
 
 # setting the correct xpath to get game links from team4545 or lonewolf areas of lichess4545.com website
 if LEAGUE == "team4545":
@@ -48,17 +48,19 @@ def getGames(gameIDs):
     return games
 
 # get games in dictionary format - from file if present in working directory or lichess.org if not
-gameIDs = gameList()
+#gameIDs = gameList()
 try:
     infile = open(GAMESFILENAME,'r')
     games = json.load(infile)
     infile.close()
+    """
     newgames = set(gameIDs) - set(games.keys())
     if newgames:
         games.update(getGames(newgames))
         outfile = open(GAMESFILENAME, 'w')
         json.dump(games, outfile, indent=4)
         print("This data was updated with:", newgames)
+    """
     print("This data was read from file.")
 except Exception as e:
     print(e)
@@ -177,7 +179,7 @@ def timeStats():
 
     maxi_think = 0
     maxi_thinkIDs = []
-    maxi_move = []
+    maxi_move = 0
 
     maxi_spent = 0
     maxi_spentIDs = []
@@ -198,10 +200,9 @@ def timeStats():
                 if time > maxi_think:
                     maxi_think = time
                     maxi_thinkIDs = [game.get('id')]
-                    maxi_move = [move+1]
+                    maxi_move = move+1
                 elif time == maxi_think:
                     maxi_thinkIDs.append(game.get('id'))
-                    maxi_move.append(move+1)
             remain = (start_time) - reduce(lambda x, y: x+(y-(increment)), colour)
             if c == 0 and last_move == "white":
                 remain -= increment
@@ -249,6 +250,11 @@ def getBlunder():
     return blunder, blunderIDs
 #print(getBlunder())
 
+def playerNames(ID): #get player names from a given game ID
+    gameplayers = []
+    gameplayers.append(games[ID]["players"]["white"]["userId"])
+    gameplayers.append(games[ID]["players"]["black"]["userId"])
+    return " White: {0}, Black: {1}".format(gameplayers[0], gameplayers[1])
 
 # assigning variables for formatting
 upset, upsetIDs = getUpset()
@@ -259,19 +265,28 @@ maxturns, maxturnIDs = getTurns()
 maxi, wbmaxigame, mini, wbminigame, combmaxi, combmaxigame, combmini, combminigame = getACPL()
 maxi_think, maxi_thinkIDs, maxi_move, maxi_remain, maxi_remainIDs, maxi_spent, maxi_spentIDs = timeStats()
 
+def plyToMove(ply):
+    colour = "white" if (ply % 2) == 1 else "black"
+    ply = ply//2
+    if colour == "white":
+        ply += 1
+    return "{0} on move {1}".format(colour, ply)
+
+minmate, mindraw, minresign, maxturns, maxi_move = plyToMove(minmate), plyToMove(mindraw), plyToMove(minresign), plyToMove(maxturns), plyToMove(maxi_move)
+    
 for stat in [upsetIDs, minmateIDs, mindrawIDs, minresignIDs, maxturnIDs, wbmaxigame, wbminigame, combmaxigame, combminigame, maxi_thinkIDs, maxi_remainIDs, maxi_spentIDs]:
     for n, game in enumerate(stat):
-        stat[n] = LICHESSURL + game
+        stat[n] = '<a href= "{0}" target="_blank">Gamelink</a></li> {1}'.format((LICHESSURL + game), playerNames(game))
 
-print("The fastest mate was {0} found in game ID {1}.".format(minmate, ", ".join(minmateIDs)))
-print("The fastest draw was {0} found in game ID {1}.".format(mindraw, ", ".join(mindrawIDs)))
-print("The fastest resign was {0} found in game ID {1}.".format(minresign, ", ".join(minresignIDs)))
-print("The biggest upset was {0} points in game ID {1}.".format(upset, ", ".join(upsetIDs)))
-print("{0} was the longest game with ID {1}.".format(maxturns, ", ".join(maxturnIDs)))
-print("{0} was the highest ACPL in game ID {1}. {2} was the lowest ACPL in game ID {3}. Combined maximum ACPL was {4} in game ID {5} and the combined minimum ACPL was {6} in game ID {7}.".format(maxi, ", ".join(wbmaxigame), mini, ", ".join(wbminigame), combmaxi, ", ".join(combmaxigame), combmini, ", ".join(combminigame)))
-print("The longest think was {0} in game {1} on move {2}".format(maxi_think, ", ".join(maxi_thinkIDs), maxi_move))
-print("The most time left was {0} in game {1}".format(maxi_remain, ", ".join(maxi_remainIDs)))
-print("The most time spent was {0} in game {1}".format(maxi_spent, ", ".join(maxi_spentIDs)))
+print("The fastest mate was {0} found in {1}.".format(minmate, ", ".join(minmateIDs)))
+print("The fastest draw was {0} found in {1}.".format(mindraw, ", ".join(mindrawIDs)))
+print("The fastest resign was {0} found in {1}.".format(minresign, ", ".join(minresignIDs)))
+print("The biggest upset was {0} points in {1}.".format(upset, ", ".join(upsetIDs)))
+print("The longest game ended with {0} {1}.".format(maxturns, ", ".join(maxturnIDs)))
+print("{0} was the highest ACPL in {1}. {2} was the lowest ACPL in {3}. Combined maximum ACPL was {4} in {5} and the combined minimum ACPL was {6} in {7}.".format(maxi, ", ".join(wbmaxigame), mini, ", ".join(wbminigame), combmaxi, ", ".join(combmaxigame), combmini, ", ".join(combminigame)))
+print("The longest think was {0} by {2} in {1}".format(maxi_think, ", ".join(maxi_thinkIDs), maxi_move))
+print("The most time left was {0} in {1}".format(maxi_remain, ", ".join(maxi_remainIDs)))
+print("The most time spent was {0} in {1}".format(maxi_spent, ", ".join(maxi_spentIDs)))
 
 def seasonStats(gamevalues):
     for game in gamevalues:
