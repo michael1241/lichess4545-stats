@@ -48,19 +48,17 @@ def getGames(gameIDs):
     return games
 
 # get games in dictionary format - from file if present in working directory or lichess.org if not
-#gameIDs = gameList()
+gameIDs = gameList()
 try:
     infile = open(GAMESFILENAME,'r')
     games = json.load(infile)
     infile.close()
-    """
     newgames = set(gameIDs) - set(games.keys())
     if newgames:
         games.update(getGames(newgames))
         outfile = open(GAMESFILENAME, 'w')
         json.dump(games, outfile, indent=4)
         print("This data was updated with:", newgames)
-    """
     print("This data was read from file.")
 except Exception as e:
     print(e)
