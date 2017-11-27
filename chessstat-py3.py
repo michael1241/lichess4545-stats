@@ -23,18 +23,21 @@ LICHESSURL = "https://lichess.org/"
 # setting the correct xpath to get game links from team4545 or lonewolf areas of lichess4545.com website
 if LEAGUE == "team4545":
     XPATHCLASS = "cell-game-result"
+    SECTIONS = [SEASON]
 elif LEAGUE == "lonewolf":
     XPATHCLASS = "text-center text-nowrap"
+    SECTIONS = [SEASON, SEASON + "u1800"]
 
 def gameList():
     # build list of gameIDs from the round(s) by scraping lichess4545.com website
     gameIDs = []
     print("Getting games for rounds {0} to {1}".format(ROUNDNUMS[0],ROUNDNUMS[1]))
     for roundnum in range(ROUNDNUMS[0], ROUNDNUMS[1]):
-        connection = urllib.request.urlopen('https://www.lichess4545.com/{0}/season/{1}/round/{2}/pairings/'.format(LEAGUE, SEASON, roundnum))
-        dom =  lxml.html.fromstring(connection.read())
-        for link in dom.xpath('//td[@class="{0}"]/a/@href'.format(XPATHCLASS)):
-            gameIDs.append(link[-8:])
+        for SECTION in SECTIONS:
+            connection = urllib.request.urlopen('https://www.lichess4545.com/{0}/season/{1}/round/{2}/pairings/'.format(LEAGUE, SECTION, roundnum))
+            dom =  lxml.html.fromstring(connection.read())
+            for link in dom.xpath('//td[@class="{0}"]/a/@href'.format(XPATHCLASS)):
+                gameIDs.append(link[-8:])
     return gameIDs
 
 def getGames(gameIDs):
