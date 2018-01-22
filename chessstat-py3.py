@@ -273,7 +273,7 @@ def plyToMove(ply):
         ply += 1
     return "{0} on move {1}".format(colour, ply)
 
-minmate, mindraw, minresign, maxturns, maxi_move = plyToMove(minmate), plyToMove(mindraw), plyToMove(minresign), plyToMove(maxturns), plyToMove(maxi_move)
+minmate, mindraw, minresign, maxturns = plyToMove(minmate), plyToMove(mindraw), plyToMove(minresign), plyToMove(maxturns)
     
 for stat in [upsetIDs, minmateIDs, mindrawIDs, minresignIDs, maxturnIDs, wbmaxigame, wbminigame, combmaxigame, combminigame, maxi_thinkIDs, maxi_remainIDs, maxi_spentIDs]:
     for n, game in enumerate(stat):
