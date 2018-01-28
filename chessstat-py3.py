@@ -74,7 +74,7 @@ except Exception as e:
 # exclude listed players' games from stats results e.g. for cheater games
 gamevalues = []
 for game in list(games.values()):
-    if game["players"]["white"]["userId"] not in EXCLUDE and game["players"]["black"]["userId"] not in EXCLUDE and game["variant"] == "standard":
+    if game["players"]["white"]["userId"] not in EXCLUDE and game["players"]["black"]["userId"] not in EXCLUDE and game["variant"] == "standard" and game["id"] not in EXCLUDE:
         gamevalues.append(game)
     else:
         print("{0} removed".format(game["id"]))
