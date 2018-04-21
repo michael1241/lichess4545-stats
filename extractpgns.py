@@ -20,7 +20,7 @@ for game in games.values():
             result = "1/2-1/2"
         else:
             result = convert[game['winner']]
-        outfile.write('[Event "{0}"]\n[Result "{1}"]\n[WhiteElo "{3}"]\n[BlackElo "{4}"]\n{2}\n{1}\n\n'.format(game['id'], result, game['moves'], game['players']['white']['rating'], game['players']['black']['rating']))
+        outfile.write('[Event "{0}"]\n[Result "{1}"]\n[White "{5}"]\n[Black "{6}"]\n[WhiteElo "{3}"]\n[BlackElo "{4}"]\n{2}\n{1}\n\n'.format(game['id'], result, game['moves'], game['players']['white']['rating'], game['players']['black']['rating'], game['players']['white']['userId'], game['players']['black']['userId']))
     except KeyError:
         print "No moves for this game"
 
